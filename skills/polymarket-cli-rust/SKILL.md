@@ -1,20 +1,24 @@
 ---
 name: polymarket-cli-rust
-description: Install and use the Rust Polymarket CLI (polyte-cli) to query markets and (optionally) trade on Polymarket. Use when an agent needs fast command-line access to Polymarket market data and the CLOB trading API.
+description: Install and use the official Rust Polymarket CLI to browse markets, place orders, manage positions, and interact with Polymarket APIs/contracts from the terminal or as a JSON API for agents.
 license: MIT
 metadata:
-  upstream: https://github.com/roushou/polyte
-  package: polyte-cli
+  upstream: https://github.com/Polymarket/polymarket-cli
+  package: polymarket
   categories: "prediction-markets cli"
 ---
 
 ## Overview
 
-This skill installs and uses the **polyte-cli** (Rust) for Polymarket.
+This skill installs and uses the **Polymarket CLI** (Rust) to:
 
-It supports:
-- Querying Polymarket market data (Gamma/Data APIs)
-- Interacting with the Polymarket CLOB API (trading) when configured with credentials
+- Browse and search markets/events
+- Query order books and prices (CLOB)
+- Place/cancel orders and inspect balances (authenticated)
+- Run on-chain approval and CTF operations (split/merge/redeem)
+- Fetch deposit addresses and check deposit status (bridge)
+
+The CLI supports table output for humans and JSON output for agents/scripts.
 
 ## Supported chains + contract addresses
 
@@ -25,53 +29,101 @@ If you need onchain settlement details, add them explicitly from official Polyma
 
 ## Prereqs / approvals / setup
 
-### Install (recommended)
+### Install
 
-Install via Cargo:
+Homebrew (macOS/Linux):
 
 ```bash
-cargo install polyte-cli
+brew tap Polymarket/polymarket-cli https://github.com/Polymarket/polymarket-cli
+brew install polymarket
 ```
 
-Alternative: use upstream release binaries if available.
+Shell installer:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/Polymarket/polymarket-cli/main/install.sh | sh
+```
+
+Build from source:
+
+```bash
+git clone https://github.com/Polymarket/polymarket-cli
+cd polymarket-cli
+cargo install --path .
+```
 
 ### Environment
 
-- For public market queries: no auth required.
-- For trading / account-specific calls: you will need the credentials expected by polyte/polyte-cli.
-  - See upstream docs: <https://github.com/roushou/polyte/tree/main/polyte-cli>
+The CLI can run in read-only mode with no wallet.
+
+To trade / do on-chain operations, configure a wallet private key (checked in this order):
+
+- CLI flag: `--private-key 0x...`
+- Env var: `POLYMARKET_PRIVATE_KEY=0x...`
+- Config file: `~/.config/polymarket/config.json`
+
+Signature types (varies by account): `proxy` (default), `eoa`, `gnosis-safe`.
 
 ## Exact calls / commands
 
-> Note: command names/flags may change (upstream warns it’s WIP). Prefer `--help` output as source of truth.
-
-### 1) Inspect CLI commands
+### Quick start (no wallet needed)
 
 ```bash
-polyte-cli --help
-polyte-cli <subcommand> --help
+# Browse markets immediately
+polymarket markets list --limit 5
+polymarket markets search "election"
+
+# Inspect a specific market
+polymarket markets get will-trump-win-the-2024-election
+
+# JSON output for agents/scripts
+polymarket -o json markets list --limit 3
 ```
 
-### 2) Query markets (read-only)
-
-Use the CLI to list/search markets. Start by discovering the right subcommand:
+### CLOB (read-only)
 
 ```bash
-polyte-cli --help
+polymarket clob ok
+polymarket clob book <TOKEN_ID>
+polymarket clob midpoint <TOKEN_ID>
 ```
 
-Then run the relevant market query command (examples depend on the current CLI interface).
+### Trading (authenticated)
 
-### 3) Trading (CLOB)
+```bash
+# Place a limit order
+polymarket clob create-order \
+  --token <TOKEN_ID> \
+  --side buy \
+  --price 0.50 \
+  --size 10
 
-Trading requires:
-- configured account credentials
-- understanding of order parameters (side, price, size, market/token id)
+# Cancel an order
+polymarket clob cancel <ORDER_ID>
 
-Workflow:
-1) Confirm auth is configured per upstream docs.
-2) Fetch market / token identifiers.
-3) Place an order using the CLI’s trading subcommand.
+# Check balances
+polymarket clob balance --asset-type collateral
+```
+
+### On-chain approvals + CTF operations (Polygon)
+
+```bash
+# Approve required contracts (multiple on-chain txs)
+polymarket approve set
+
+# Split/merge/redeem conditional tokens
+polymarket ctf split --condition <CONDITION_ID> --amount 10
+polymarket ctf merge --condition <CONDITION_ID> --amount 10
+polymarket ctf redeem --condition <CONDITION_ID>
+```
+
+### Bridge (deposit addresses for EVM/Solana/Bitcoin)
+
+```bash
+polymarket bridge deposit <EVM_WALLET_ADDRESS>
+polymarket bridge supported-assets
+polymarket bridge status <DEPOSIT_ADDRESS>
+```
 
 ## Outputs + error cases
 
@@ -92,5 +144,4 @@ Common errors:
 
 ## Upstream
 
-- Repo: <https://github.com/roushou/polyte>
-- CLI docs: <https://github.com/roushou/polyte/tree/main/polyte-cli>
+- Repo: <https://github.com/Polymarket/polymarket-cli>
